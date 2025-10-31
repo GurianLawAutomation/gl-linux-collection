@@ -1,6 +1,6 @@
 ---
 - name: Ensure _gl-opsauto has passwordless sudo everywhere
-  hosts: lab
+  hosts: prod
   become: true
   gather_facts: false
 
