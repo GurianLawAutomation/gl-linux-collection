@@ -1,0 +1,52 @@
+---
+- name: Ensure _gl-opsauto has passwordless sudo everywhere
+  hosts: lab
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Install explicit sudoers fragment (authoritative)
+      copy:
+        dest: /etc/sudoers.d/99-gl-opsauto
+        content: "_gl-opsauto ALL=(ALL) NOPASSWD: ALL\nDefaults:_gl-opsauto !requiretty\n"
+        owner: root
+        group: root
+        mode: '0440'
+
+    - name: Remove any legacy non-NOPASSWD entries for _gl-opsauto from /etc/sudoers.d
+      shell: |
+        grep -nE '^_gl-opsauto\s+' /etc/sudoers.d/* 2>/dev/null | cut -d: -f1 | sort -u | while read -r f; do
+          # skip our new fragment
+          test "$f" = /etc/sudoers.d/99-gl-opsauto && continue
+          # drop lines that start with _gl-opsauto and do NOT contain NOPASSWD
+          if grep -qE '^_gl-opsauto\s+.*' "$f"; then
+            sed -i.bak -r '/^_gl-opsauto\s+.*NOPASSWD/!{/^_gl-opsauto\s+/d}' "$f"
+          fi
+        done
+      args:
+        executable: /bin/bash
+      register: cleanup
+      changed_when: cleanup.stdout != ""
+
+    - name: Remove legacy entry in /etc/sudoers if present (careful)
+      block:
+        - name: Make a safe backup of /etc/sudoers
+          copy:
+            src: /etc/sudoers
+            dest: /root/sudoers.preedit.bak
+            owner: root
+            group: root
+            mode: '0600'
+
+        - name: Delete _gl-opsauto non-NOPASSWD lines from /etc/sudoers
+          lineinfile:
+            path: /etc/sudoers
+            regexp: '^_gl-opsauto\s+'
+            state: absent
+          notify: validate sudoers
+      when: >-
+        (lookup('file', '/etc/sudoers') is search('^_gl-opsauto\\s+.*NOPASSWD') ) == False
+
+  handlers:
+    - name: validate sudoers
+      command: visudo -c
