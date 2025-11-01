@@ -1,0 +1,43 @@
+# file: check_ubuntu24_apache2.yml
+# Simple health check: Ubuntu 24.* only — uptime + apache2 service + HTTP 200
+- name: Ubuntu 24 Apache2 health (simple)
+  hosts: all
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Fail if not Ubuntu 24.*
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.distribution == "Ubuntu"
+          - ansible_facts.distribution_major_version == "24"
+        fail_msg: "This playbook is only for Ubuntu 24.*"
+
+    - name: Collect service facts
+      ansible.builtin.service_facts:
+
+    - name: Capture apache2 service state
+      ansible.builtin.set_fact:
+        apache_present: "{{ 'apache2.service' in ansible_facts.services }}"
+        apache_running: "{{ (ansible_facts.services['apache2.service'].state | default('stopped')) == 'running' }}"
+        apache_enabled: "{{ (ansible_facts.services['apache2.service'].enabled | default(false)) | bool }}"
+
+    - name: Probe HTTP on localhost (expects 200 OK, but won’t fail the play)
+      ansible.builtin.uri:
+        url: http://127.0.0.1/
+        method: GET
+        status_code: 200
+        timeout: 2
+        return_content: no
+      register: http_check
+      failed_when: false
+      changed_when: false
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "Uptime (seconds): {{ ansible_facts.uptime_seconds | default('unknown') }}"
+          - "apache2: present={{ apache_present }}, running={{ apache_running }}, enabled={{ apache_enabled }}"
+          - "HTTP GET / -> status={{ http_check.status | default('n/a') }} (200 means OK)"
+
