@@ -33,7 +33,7 @@
         - name: Make a safe backup of /etc/sudoers
           copy:
             src: /etc/sudoers
-            dest: /root/sudoers.preedit.bak
+            dest: /tmp/sudoers.preedit.bak
             owner: root
             group: root
             mode: '0600'
