@@ -28,24 +28,24 @@
       register: cleanup
       changed_when: cleanup.stdout != ""
 
-    - name: Remove legacy entry in /etc/sudoers if present (careful)
-      block:
-        - name: Make a safe backup of /etc/sudoers
-          copy:
-            src: /etc/sudoers
-            dest: /tmp/sudoers.preedit.bak
-            owner: root
-            group: root
-            mode: '0600'
+    # - name: Remove legacy entry in /etc/sudoers if present (careful)
+    #   block:
+    #     - name: Make a safe backup of /etc/sudoers
+    #       copy:
+    #         src: /etc/sudoers
+    #         dest: /tmp/sudoers.preedit.bak
+    #         owner: root
+    #         group: root
+    #         mode: '0600'
 
-        - name: Delete _gl-opsauto non-NOPASSWD lines from /etc/sudoers
-          lineinfile:
-            path: /etc/sudoers
-            regexp: '^_gl-opsauto\s+'
-            state: absent
-          notify: validate sudoers
-      when: >-
-        (lookup('file', '/etc/sudoers') is search('^_gl-opsauto\\s+.*NOPASSWD') ) == False
+    #     - name: Delete _gl-opsauto non-NOPASSWD lines from /etc/sudoers
+    #       lineinfile:
+    #         path: /etc/sudoers
+    #         regexp: '^_gl-opsauto\s+'
+    #         state: absent
+    #       notify: validate sudoers
+    #   when: >-
+    #     (lookup('file', '/etc/sudoers') is search('^_gl-opsauto\\s+.*NOPASSWD') ) == False
 
   handlers:
     - name: validate sudoers
